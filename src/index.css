@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: custom scrollbar & dark theme touch */
+html {
+  color-scheme: dark;
+  background-color: #0a0a0a;
+}
