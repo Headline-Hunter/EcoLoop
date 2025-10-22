@@ -7,7 +7,7 @@ import { ROUTES } from '../routes';
 
 export default function AuthModal({ redirectTo = ROUTES.LANDING, onClose }) {
   const [authStep, setAuthStep] = useState('login');
-  const [formData, setFormData] = useState({ email: '', password: '', username: '', company: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', username: '', company: '', role: '' });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login, signup } = useContext(AuthContext);
@@ -15,15 +15,15 @@ export default function AuthModal({ redirectTo = ROUTES.LANDING, onClose }) {
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      alert('Please fill in all fields');
+    if (!formData.email || !formData.password || !formData.role) {
+      alert('Please fill in all fields and select your role');
       return;
     }
 
     setLoading(true);
     const username = formData.username || formData.email.split('@')[0];
-    login(formData.email, username);
-    setFormData({ email: '', password: '', username: '', company: '' });
+    login(formData.email, username, formData.role);
+    setFormData({ email: '', password: '', username: '', company: '', role: '' });
 
     setTimeout(() => {
       setLoading(false);
@@ -34,15 +34,15 @@ export default function AuthModal({ redirectTo = ROUTES.LANDING, onClose }) {
 
   const handleSignupSubmit = (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password || !formData.company) {
-      alert('Please fill in all fields');
+    if (!formData.email || !formData.password || !formData.company || !formData.role) {
+      alert('Please fill in all fields and select your role');
       return;
     }
 
     setLoading(true);
     const username = formData.username || formData.company;
-    signup(formData.email, username, formData.company);
-    setFormData({ email: '', password: '', username: '', company: '' });
+    signup(formData.email, username, formData.company, formData.role);
+    setFormData({ email: '', password: '', username: '', company: '', role: '' });
 
     setTimeout(() => {
       setLoading(false);
@@ -158,6 +158,50 @@ export default function AuthModal({ redirectTo = ROUTES.LANDING, onClose }) {
               onSubmit={authStep === 'login' ? handleLoginSubmit : handleSignupSubmit}
               className="space-y-5"
             >
+              {/* Role Selection - Show for both login and signup */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-300 mb-3">
+                  I am a...
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { value: 'buyer', label: 'Buyer', icon: '🛒', desc: authStep === 'login' ? 'Login as buyer' : 'I want to purchase e-waste' },
+                    { value: 'seller', label: 'Seller', icon: '💼', desc: authStep === 'login' ? 'Login as seller' : 'I want to sell e-waste' },
+                  ].map((role) => (
+                    <motion.button
+                      key={role.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: role.value })}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                        formData.role === role.value
+                          ? 'border-emerald-400 bg-emerald-500/20'
+                          : 'border-white/20 bg-white/5 hover:border-white/40'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{role.icon}</span>
+                          <span className="font-semibold text-white">{role.label}</span>
+                        </div>
+                        <p className="text-xs text-neutral-400">{role.desc}</p>
+                      </div>
+                      {formData.role === role.value && (
+                        <motion.div
+                          layoutId="roleSelected"
+                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-emerald-400 flex items-center justify-center"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                        >
+                          <span className="text-sm">✓</span>
+                        </motion.div>
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
               <AnimatePresence mode="wait">
                 {authStep === 'signup' && (
                   <motion.div
@@ -166,17 +210,20 @@ export default function AuthModal({ redirectTo = ROUTES.LANDING, onClose }) {
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <label className="block text-sm font-semibold text-neutral-300 mb-3">
-                      Company Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.company}
-                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                      placeholder="Your company name"
-                      className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-md px-5 py-3.5 text-white placeholder-neutral-400 focus:border-emerald-400/80 focus:ring-2 focus:ring-emerald-400/40 outline-none transition-all text-base"
-                      required
-                    />
+                    {/* Company Name */}
+                    <div>
+                      <label className="block text-sm font-semibold text-neutral-300 mb-3">
+                        Company Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.company}
+                        onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                        placeholder="Your company name"
+                        className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-md px-5 py-3.5 text-white placeholder-neutral-400 focus:border-emerald-400/80 focus:ring-2 focus:ring-emerald-400/40 outline-none transition-all text-base"
+                        required
+                      />
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -248,7 +295,7 @@ export default function AuthModal({ redirectTo = ROUTES.LANDING, onClose }) {
               whileTap={{ scale: 0.98 }}
               onClick={() => {
                 setAuthStep(authStep === 'login' ? 'signup' : 'login');
-                setFormData({ email: '', password: '', username: '', company: '' });
+                setFormData({ email: '', password: '', username: '', company: '', role: '' });
               }}
               className="w-full rounded-xl border-2 border-white/20 bg-white/5 backdrop-blur-sm px-6 py-3.5 font-semibold text-white text-base hover:bg-white/10 hover:border-white/40 transition-all"
             >

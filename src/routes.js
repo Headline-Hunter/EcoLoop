@@ -7,6 +7,7 @@ export const ROUTES = {
   ANALYTICS: '/analytics',
   ORDERS: '/orders',
   MESSAGES: '/messages',
+  WISHLIST: '/wishlist',
   HELP: '/help',
   // Add new routes here as you create pages
 };
@@ -59,6 +60,12 @@ export const ROUTE_CONFIG = {
     requiresAuth: true,
     showInNav: true,
     path: '/messages'
+  },
+  [ROUTES.WISHLIST]: {
+    label: 'Wishlist',
+    requiresAuth: true,
+    showInNav: false,
+    path: '/wishlist'
   },
   [ROUTES.HELP]: {
     label: 'Help',

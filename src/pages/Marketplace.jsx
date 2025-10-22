@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigation } from '../hooks/useNavigation';
 import { ROUTES, ROUTE_CONFIG } from '../routes';
 import SharedHeader from '../components/SharedHeader';
+import { WishlistContext } from '../contexts/WishlistContext';
+import { createPortal } from "react-dom";
 
 const marketplaceListings = [
   {
@@ -172,6 +174,7 @@ function cn(...classes) {
 
 export default function Marketplace() {
   const { navigate } = useNavigation();
+  const { wishlist, toggleWishlist: contextToggleWishlist, isWishlisted } = useContext(WishlistContext);
   const [selectedListing, setSelectedListing] = useState(null);
   const [filters, setFilters] = useState({
     category: "all",
@@ -181,6 +184,13 @@ export default function Marketplace() {
   });
   const [sortBy, setSortBy] = useState("recent");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const toggleWishlist = (listingId, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    contextToggleWishlist(listingId);
+  };
 
   const categories = ["all", ...new Set(marketplaceListings.map(l => l.category))];
   const locations = ["all", ...new Set(marketplaceListings.map(l => l.location.split(",")[1].trim()))];
@@ -269,7 +279,26 @@ export default function Marketplace() {
                 onClick={() => navigate(ROUTES.SELL)}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-emerald-500/30 transition-all hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105"
               >
-                <span>✨</span>
+                <motion.button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(ROUTES.WISHLIST);
+                  }}
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.85 }}
+                  className="relative -ml-1"
+                >
+                  <span className="text-lg">❤️</span>
+                  {wishlist.size > 0 && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-white flex items-center justify-center"
+                    >
+                      <span className="text-xs font-bold text-emerald-600">{wishlist.size}</span>
+                    </motion.div>
+                  )}
+                </motion.button>
                 <span>List Item</span>
               </button>
             </div>
@@ -419,6 +448,8 @@ export default function Marketplace() {
                   listing={listing}
                   onClick={() => setSelectedListing(listing)}
                   index={idx}
+                  isWishlisted={isWishlisted(listing.id)}
+                  onToggleWishlist={toggleWishlist}
                 />
               ))}
             </div>
@@ -430,6 +461,8 @@ export default function Marketplace() {
               <ListingDetail
                 listing={selectedListing}
                 onClose={() => setSelectedListing(null)}
+                isWishlisted={isWishlisted(selectedListing.id)}
+                onToggleWishlist={toggleWishlist}
               />
             )}
           </AnimatePresence>
@@ -439,7 +472,7 @@ export default function Marketplace() {
   );
 }
 
-function ListingCard({ listing, onClick, index }) {
+function ListingCard({ listing, onClick, index, isWishlisted, onToggleWishlist }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -450,6 +483,22 @@ function ListingCard({ listing, onClick, index }) {
       className="group relative rounded-2xl border border-white/10 bg-gradient-to-br from-neutral-900/80 to-neutral-950/80 backdrop-blur-sm overflow-hidden cursor-pointer transition-all hover:border-emerald-400/40 hover:shadow-2xl hover:shadow-emerald-500/20"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-cyan-500/0 to-emerald-500/0 group-hover:from-emerald-500/10 group-hover:via-cyan-500/10 group-hover:to-emerald-500/10 transition-all duration-500" />
+
+      {/* Wishlist Heart Button */}
+      <motion.button
+        onClick={(e) => onToggleWishlist(listing.id, e)}
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.85 }}
+        className="absolute top-4 right-4 z-20 transition-all"
+      >
+        <motion.span
+          className="text-xl"
+          animate={isWishlisted ? { scale: [1, 1.2, 1] } : {}}
+          transition={{ duration: 0.3 }}
+        >
+          {isWishlisted ? '❤️' : '🤍'}
+        </motion.span>
+      </motion.button>
 
       <div className="relative p-5 sm:p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -473,7 +522,7 @@ function ListingCard({ listing, onClick, index }) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 items-end">
+          <div className="flex flex-col gap-2 items-end mr-10">
             {listing.featured && (
               <motion.div
                 initial={{ scale: 0 }}
@@ -482,11 +531,6 @@ function ListingCard({ listing, onClick, index }) {
               >
                 Featured
               </motion.div>
-            )}
-            {listing.verified && (
-              <div className="rounded-lg bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 text-xs font-semibold text-emerald-200">
-                ✓
-              </div>
             )}
           </div>
         </div>
@@ -557,31 +601,67 @@ function ListingCard({ listing, onClick, index }) {
   );
 }
 
-function ListingDetail({ listing, onClose }) {
-  return (
+function ListingDetail({ listing, onClose, isWishlisted, onToggleWishlist }) {
+  const { navigate } = useNavigation();
+
+  const handleMessageSeller = (e) => {
+    e.stopPropagation();
+    const sellerInfo = encodeURIComponent(JSON.stringify({
+      sellerId: listing.id,
+      sellerName: listing.seller,
+      productTitle: listing.title,
+      productImage: listing.image
+    }));
+    navigate(`${ROUTES.MESSAGES}?seller=${sellerInfo}`);
+  };
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start lg:items-center justify-center p-0"
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-950 shadow-2xl"
+        className="relative w-full max-w-4xl h-full rounded-none lg:rounded-3xl lg:h-[95vh] lg:max-h-[95vh] border-0 lg:border lg:border-white/20 bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-950 shadow-2xl overflow-hidden"
       >
+        <div
+          className="overflow-y-auto h-full"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(16, 185, 129, 0.5) transparent'
+          }}
+        >
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <button
-          onClick={onClose}
-          className="sticky top-4 right-4 float-right z-10 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm p-3 transition-colors"
-        >
-          ✕
-        </button>
+        {/* Close and Wishlist buttons */}
+        <div className="sticky top-4 right-4 float-right z-10 flex gap-3 items-center">
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWishlist(listing.id);
+            }}
+            whileHover={{ scale: 1.2 }}
+            whileTap={{ scale: 0.85 }}
+            className="transition-all"
+          >
+            <span className="text-2xl">{isWishlisted ? '❤️' : '🤍'}</span>
+          </motion.button>
+          <button
+            onClick={onClose}
+            className="rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm p-3 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
 
         <div className="relative p-6 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row items-start gap-6">
@@ -630,18 +710,19 @@ function ListingDetail({ listing, onClose }) {
                   ₹{listing.pricePerKg.toLocaleString()} per kg
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={handleMessageSeller}
                   className="rounded-xl border-2 border-emerald-400 bg-emerald-500/20 px-6 py-3 font-semibold text-emerald-200 hover:bg-emerald-500/30 transition-all"
                 >
-                  Message Seller
+                  💬 Message Seller
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-6 py-3 font-semibold shadow-lg hover:shadow-xl transition-all"
+                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-8 py-3 font-bold shadow-lg hover:shadow-xl transition-all"
                 >
                   Place Order
                 </motion.button>
@@ -726,24 +807,10 @@ function ListingDetail({ listing, onClose }) {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 rounded-xl border-2 border-white/20 bg-white/5 py-3 font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-            >
-              <span>📋</span> Add to Watchlist
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 rounded-xl border-2 border-white/20 bg-white/5 py-3 font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-            >
-              <span>🔗</span> Share Listing
-            </motion.button>
-          </div>
+        </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }

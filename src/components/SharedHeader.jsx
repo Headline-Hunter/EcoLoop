@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigation } from '../hooks/useNavigation.jsx';
 import { ROUTES, ROUTE_CONFIG } from '../routes';
 import AuthModal from './AuthModal';
+import UserProfileDropdown from './UserProfileDropdown';
+import { WishlistContext } from '../contexts/WishlistContext';
 
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -11,6 +13,7 @@ function cn(...classes) {
 export default function SharedHeader({ className }) {
   const { currentPage, user, navigate, handleLogout } = useNavigation();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { wishlistCount } = useContext(WishlistContext);
 
   // Public routes that always show
   const publicRoutes = [ROUTES.LANDING, ROUTES.MARKETPLACE];
@@ -99,17 +102,6 @@ export default function SharedHeader({ className }) {
 
             {/* Right side buttons */}
             <div className="flex items-center gap-3">
-              {/* User Info - only show if logged in */}
-              {user && (
-                <div className="hidden sm:flex items-center gap-3 text-sm">
-                  <span className="text-2xl">🏢</span>
-                  <div>
-                    <div className="font-semibold">{user.username || 'TechRecycle Pro'}</div>
-                    <div className="text-xs text-neutral-400">{user.email || 'seller@example.com'}</div>
-                  </div>
-                </div>
-              )}
-
               {/* Sign In button - only show if NOT logged in */}
               {!user && (
                 <motion.button
@@ -122,17 +114,24 @@ export default function SharedHeader({ className }) {
                 </motion.button>
               )}
 
-              {/* Sign Out button - only show if logged in */}
-              {user && (
-                <motion.button
-                  onClick={handleLogout}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/5 transition-all"
-                >
-                  Sign Out
-                </motion.button>
-              )}
+              {/* Wishlist Heart Button */}
+              <motion.button
+                onClick={() => navigate(ROUTES.WISHLIST)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                className="relative rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/5 transition-all"
+              >
+                <span className="text-lg">❤️</span>
+                {wishlistCount > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 flex items-center justify-center text-xs font-bold text-white shadow-lg"
+                  >
+                    {wishlistCount}
+                  </motion.div>
+                )}
+              </motion.button>
 
               {/* List Item button - always show */}
               <motion.button
@@ -150,6 +149,11 @@ export default function SharedHeader({ className }) {
                 <span>✨</span>
                 <span>List Item</span>
               </motion.button>
+
+              {/* User Profile Dropdown - only show if logged in */}
+              {user && (
+                <UserProfileDropdown user={user} onLogout={handleLogout} />
+              )}
             </div>
           </div>
         </div>

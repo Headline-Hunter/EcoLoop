@@ -20,25 +20,27 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const login = useCallback((email, username) => {
+  const login = useCallback((email, username, role = 'seller') => {
     const userData = {
       email,
       username,
+      role,
       loggedIn: true,
-      profileImage: '🏢'
+      profileImage: role === 'buyer' ? '🛒' : '💼'
     };
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     console.log('✅ User logged in:', userData);
   }, []);
 
-  const signup = useCallback((email, username, company) => {
+  const signup = useCallback((email, username, company, role) => {
     const userData = {
       email,
       username,
       company,
+      role,
       loggedIn: true,
-      profileImage: '🏢'
+      profileImage: role === 'buyer' ? '🛒' : '💼'
     };
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);

@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext, AuthProvider } from './contexts/AuthContext';
+import { WishlistProvider } from './contexts/WishlistContext';
 import { ROUTES } from './routes';
 import { AnimatePresence } from 'framer-motion';
 
@@ -8,7 +9,11 @@ import { AnimatePresence } from 'framer-motion';
 import LandingPage from './pages/LandingPage';
 import MarketplacePage from './pages/Marketplace';
 import SellPage from './pages/Sell';
-import DashboardPage from './pages/Dashboard';
+import DashboardPage from './pages/dashboard';
+import ProfilePage from './pages/Profile';
+import MessagesPage from './pages/Messages';
+import OrdersPage from './pages/Orders';
+import WishlistPage from './pages/Wishlist';
 import AuthModal from './components/AuthModal';
 
 // Protected Route Component
@@ -51,7 +56,7 @@ function AppRoutes() {
       />
       <Route
         path={ROUTES.PROFILE}
-        element={<ProtectedRoute element={<div>Profile Page</div>} />}
+        element={<ProtectedRoute element={<ProfilePage />} />}
       />
       <Route
         path={ROUTES.ANALYTICS}
@@ -59,11 +64,15 @@ function AppRoutes() {
       />
       <Route
         path={ROUTES.ORDERS}
-        element={<ProtectedRoute element={<div>Orders Page</div>} />}
+        element={<ProtectedRoute element={<OrdersPage />} />}
       />
       <Route
         path={ROUTES.MESSAGES}
-        element={<ProtectedRoute element={<div>Messages Page</div>} />}
+        element={<ProtectedRoute element={<MessagesPage />} />}
+      />
+      <Route
+        path={ROUTES.WISHLIST}
+        element={<ProtectedRoute element={<WishlistPage />} />}
       />
 
       {/* Catch-all redirect to landing */}
@@ -75,9 +84,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
+      <WishlistProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </WishlistProvider>
     </AuthProvider>
   );
 }
